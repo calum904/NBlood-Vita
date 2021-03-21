@@ -93,7 +93,7 @@ unsigned int nMaxAlloc = 0x4000000;
 
 bool bCustomName = false;
 char bAddUserMap = false;
-bool bNoDemo = false;
+bool bNoDemo = true;
 bool bQuickStart = true;
 bool bNoAutoLoad = false;
 
