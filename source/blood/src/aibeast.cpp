@@ -199,16 +199,12 @@ static void thinkSearch(spritetype *pSprite, XSPRITE *pXSprite)
     aiThinkTarget(pSprite, pXSprite);
 }
 
+#define GET_PX_SECTOR sector[pSprite->sectnum].extra
 static void thinkGoto(spritetype *pSprite, XSPRITE *pXSprite)
 {
     dassert(pSprite->type >= kDudeBase && pSprite->type < kDudeMax);
     DUDEINFO *pDudeInfo = &dudeInfo[pSprite->type - kDudeBase];
-    XSECTOR *pXSector;
-    int nXSector = sector[pSprite->sectnum].extra;
-    if (nXSector > 0)
-        pXSector = &xsector[nXSector];
-    else
-        pXSector = NULL;
+
     int dx = pXSprite->targetX-pSprite->x;
     int dy = pXSprite->targetY-pSprite->y;
     int nAngle = getangle(dx, dy);
@@ -216,6 +212,7 @@ static void thinkGoto(spritetype *pSprite, XSPRITE *pXSprite)
     aiChooseDirection(pSprite, pXSprite, nAngle);
     if (nDist < 512 && klabs(pSprite->ang - nAngle) < pDudeInfo->periphery)
     {
+        XSECTOR *pXSector = (GET_PX_SECTOR > 0) ? &xsector[GET_PX_SECTOR] : NULL;
         if (pXSector && pXSector->Underwater)
             aiNewState(pSprite, pXSprite, &beastSwimSearch);
         else
@@ -228,12 +225,8 @@ static void thinkChase(spritetype *pSprite, XSPRITE *pXSprite)
 {
     if (pXSprite->target == -1)
     {
-        XSECTOR *pXSector;
-        int nXSector = sector[pSprite->sectnum].extra;
-        if (nXSector > 0)
-            pXSector = &xsector[nXSector];
-        else
-            pXSector = NULL;
+        XSECTOR *pXSector = (GET_PX_SECTOR > 0) ? &xsector[GET_PX_SECTOR] : NULL;
+
         if (pXSector && pXSector->Underwater)
             aiNewState(pSprite, pXSprite, &beastSwimSearch);
         else
@@ -250,12 +243,8 @@ static void thinkChase(spritetype *pSprite, XSPRITE *pXSprite)
     aiChooseDirection(pSprite, pXSprite, getangle(dx, dy));
     if (pXTarget->health == 0)
     {
-        XSECTOR *pXSector;
-        int nXSector = sector[pSprite->sectnum].extra;
-        if (nXSector > 0)
-            pXSector = &xsector[nXSector];
-        else
-            pXSector = NULL;
+        XSECTOR *pXSector = (GET_PX_SECTOR > 0) ? &xsector[GET_PX_SECTOR] : NULL;
+
         if (pXSector && pXSector->Underwater)
             aiNewState(pSprite, pXSprite, &beastSwimSearch);
         else
@@ -264,12 +253,7 @@ static void thinkChase(spritetype *pSprite, XSPRITE *pXSprite)
     }
     if (IsPlayerSprite(pTarget) && powerupCheck(&gPlayer[pTarget->type-kDudePlayer1], 13) > 0)
     {
-        XSECTOR *pXSector;
-        int nXSector = sector[pSprite->sectnum].extra;
-        if (nXSector > 0)
-            pXSector = &xsector[nXSector];
-        else
-            pXSector = NULL;
+        XSECTOR *pXSector = (GET_PX_SECTOR > 0) ? &xsector[GET_PX_SECTOR] : NULL;
         if (pXSector && pXSector->Underwater)
             aiNewState(pSprite, pXSprite, &beastSwimSearch);
         else
@@ -291,15 +275,11 @@ static void thinkChase(spritetype *pSprite, XSPRITE *pXSprite)
                 if (nDist < 0x1400 && nDist > 0xa00 && klabs(nDeltaAngle) < 85 && (pTarget->hitag&2)
                     && IsPlayerSprite(pTarget) && Chance(0x8000))
                 {
-                    XSECTOR *pXSector;
-                    int nXSector = sector[pSprite->sectnum].extra;
-                    if (nXSector > 0)
-                        pXSector = &xsector[nXSector];
-                    else
-                        pXSector = NULL;
                     int hit = HitScan(pSprite, pSprite->z, dx, dy, 0, CLIPMASK1, 0);
                     if (pXTarget->health > gPlayerTemplate[0].startHealth/2)
                     {
+                        XSECTOR *pXSector = (GET_PX_SECTOR > 0) ? &xsector[GET_PX_SECTOR] : NULL;
+
                         switch (hit)
                         {
                         case -1:
@@ -329,12 +309,8 @@ static void thinkChase(spritetype *pSprite, XSPRITE *pXSprite)
                 }
                 if (nDist < 921 && klabs(nDeltaAngle) < 28)
                 {
-                    XSECTOR *pXSector;
-                    int nXSector = sector[pSprite->sectnum].extra;
-                    if (nXSector > 0)
-                        pXSector = &xsector[nXSector];
-                    else
-                        pXSector = NULL;
+                    XSECTOR *pXSector = (GET_PX_SECTOR > 0) ? &xsector[GET_PX_SECTOR] : NULL;
+
                     int hit = HitScan(pSprite, pSprite->z, dx, dy, 0, CLIPMASK1, 0);
                     switch (hit)
                     {
@@ -373,12 +349,7 @@ static void thinkChase(spritetype *pSprite, XSPRITE *pXSprite)
         }
     }
 
-    XSECTOR *pXSector;
-    int nXSector = sector[pSprite->sectnum].extra;
-    if (nXSector > 0)
-        pXSector = &xsector[nXSector];
-    else
-        pXSector = NULL;
+    XSECTOR *pXSector = (GET_PX_SECTOR > 0) ? &xsector[GET_PX_SECTOR] : NULL;
     if (pXSector && pXSector->Underwater)
         aiNewState(pSprite, pXSprite, &beastSwimGoto);
     else

@@ -1403,9 +1403,6 @@ int app_main(int argc, char const * const * argv)
     ParseOptions();
     G_ExtInit();
 
-    if (!g_useCwd)
-        G_AddSearchPaths();
-
     // used with binds for fast function lookup
     hash_init(&h_gamefuncs);
     for (bssize_t i=NUMGAMEFUNCTIONS-1; i>=0; --i)

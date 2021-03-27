@@ -157,9 +157,7 @@ static void ThrowSeqCallback(int, int nXSprite)
     XSPRITE *pXSprite = &xsprite[nXSprite];
     int nSprite = pXSprite->reference;
     spritetype *pSprite = &sprite[nSprite];
-    int nMissile = 418;
-    if (gGameOptions.nDifficulty > 2)
-        nMissile = 419;
+    int nMissile = (gGameOptions.nDifficulty > 2) ? 419 : 418;
     char v4 = Chance(0x6000);
     sfxPlay3DSound(pSprite, 455, -1, 0);
     dassert(pXSprite->target >= 0 && pXSprite->target < kMaxSprites);
@@ -184,9 +182,7 @@ static void sub_68170(int, int nXSprite)
     XSPRITE *pXSprite = &xsprite[nXSprite];
     int nSprite = pXSprite->reference;
     spritetype *pSprite = &sprite[nSprite];
-    int nMissile = 418;
-    if (gGameOptions.nDifficulty > 2)
-        nMissile = 419;
+    int nMissile = (gGameOptions.nDifficulty > 2) ? 419 : 418;
     sfxPlay3DSound(pSprite, 455, -1, 0);
     spritetype *pMissile = actFireThing(pSprite, 0, 0, gDudeSlope[nXSprite]-9460, nMissile, 0x133333);
     evPost(pMissile->index, 3, 120*(2+Random(2)), COMMAND_ID_1);
@@ -197,9 +193,7 @@ static void sub_68230(int, int nXSprite)
     XSPRITE *pXSprite = &xsprite[nXSprite];
     int nSprite = pXSprite->reference;
     spritetype *pSprite = &sprite[nSprite];
-    int nMissile = 418;
-    if (gGameOptions.nDifficulty > 2)
-        nMissile = 419;
+    int nMissile = (gGameOptions.nDifficulty > 2) ? 419 : 418;
     sfxPlay3DSound(pSprite, 455, -1, 0);
     dassert(pXSprite->target >= 0 && pXSprite->target < kMaxSprites);
     spritetype *pTarget = &sprite[pXSprite->target];

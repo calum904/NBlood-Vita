@@ -30,20 +30,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "baselayer.h"
 #include "palette.h"
 
-#ifdef _WIN32
-# define NEED_SHLWAPI_H
-# include "windows_inc.h"
-# include "winbits.h"
-# ifndef KEY_WOW64_64KEY
-#  define KEY_WOW64_64KEY 0x0100
-# endif
-# ifndef KEY_WOW64_32KEY
-#  define KEY_WOW64_32KEY 0x0200
-# endif
-#elif defined __APPLE__
-# include "osxbits.h"
-#endif
-
 #include "common.h"
 #include "common_game.h"
 
@@ -70,7 +56,7 @@ const char *G_DefFile(void)
     return (g_defNamePtr == NULL) ? G_DefaultDefFile() : g_defNamePtr;
 }
 
-static char g_rootDir[BMAX_PATH];
+static char g_rootDir[BMAX_PATH+1] = { 0 };
 
 int g_useCwd;
 int32_t g_groupFileHandle;
@@ -79,25 +65,13 @@ void G_ExtPreInit(int32_t argc,char const * const * argv)
 {
     g_useCwd = G_CheckCmdSwitch(argc, argv, "-usecwd");
 
-#ifdef _WIN32
-    GetModuleFileName(NULL,g_rootDir,BMAX_PATH);
-    Bcorrectfilename(g_rootDir,1);
-    //chdir(g_rootDir);
-#else
     getcwd(g_rootDir,BMAX_PATH);
     strcat(g_rootDir,"/");
-#endif
 }
 
 void G_ExtInit(void)
 {
-    char cwd[BMAX_PATH];
-
-#ifdef EDUKE32_OSX
-    char *appdir = Bgetappdir();
-    addsearchpath(appdir);
-    Bfree(appdir);
-#endif
+    char cwd[BMAX_PATH+1] = { 0 };
 
     if (getcwd(cwd,BMAX_PATH) && Bstrcmp(cwd,"/") != 0)
         addsearchpath(cwd);
@@ -122,18 +96,14 @@ void G_ExtInit(void)
         }
     }
 
-#if defined(_WIN32)
-    if (!access("user_profiles_enabled", F_OK))
-#else
     if (g_useCwd == 0 && access("user_profiles_disabled", F_OK))
-#endif
     {
-        char *homedir;
+        char *homedir = NULL;
         int32_t asperr;
 
         if ((homedir = Bgethomedir()))
         {
-            Bsnprintf(cwd,sizeof(cwd),"%s/"
+            Bsnprintf(cwd, BMAX_PATH,"%s/"
 #if defined(_WIN32)
                       APPNAME
 #elif defined(GEKKO)
@@ -171,17 +141,16 @@ void G_LoadGroups(int32_t autoload)
 {
     if (g_modDir[0] != '/')
     {
-        char cwd[BMAX_PATH];
+        char cwd[BMAX_PATH+1]  = { 0 },
+             path[BMAX_PATH+1] = { 0 };
 
         Bstrcat(g_rootDir, g_modDir);
         addsearchpath(g_rootDir);
         //        addsearchpath(mod_dir);
 
-        char path[BMAX_PATH];
-
         if (getcwd(cwd, BMAX_PATH))
         {
-            Bsnprintf(path, sizeof(path), "%s/%s", cwd, g_modDir);
+            Bsnprintf(path, BMAX_PATH, "%s/%s", cwd, g_modDir);
             if (!Bstrcmp(g_rootDir, path))
             {
                 if (addsearchpath(path) == -2)
@@ -191,7 +160,7 @@ void G_LoadGroups(int32_t autoload)
         }
 
 #ifdef USE_OPENGL
-        Bsnprintf(path, sizeof(path), "%s/%s", g_modDir, TEXCACHEFILE);
+        Bsnprintf(path, BMAX_PATH, "%s/%s", g_modDir, TEXCACHEFILE);
         Bstrcpy(TEXCACHEFILE, path);
 #endif
     }
@@ -250,310 +219,17 @@ void G_LoadGroups(int32_t autoload)
     pathsearchmode = bakpathsearchmode;
 }
 
-#if defined _WIN32
-static int G_ReadRegistryValue(char const * const SubKey, char const * const Value, char * const Output, DWORD * OutputSize)
-{
-    // KEY_WOW64_32KEY gets us around Wow6432Node on 64-bit builds
-    REGSAM const wow64keys[] = { KEY_WOW64_32KEY, KEY_WOW64_64KEY };
-
-    for (auto &wow64key : wow64keys)
-    {
-        HKEY hkey;
-        LONG keygood = RegOpenKeyEx(HKEY_LOCAL_MACHINE, NULL, 0, KEY_READ | wow64key, &hkey);
-
-        if (keygood != ERROR_SUCCESS)
-            continue;
-
-        LONG retval = SHGetValueA(hkey, SubKey, Value, NULL, Output, OutputSize);
-
-        RegCloseKey(hkey);
-
-        if (retval == ERROR_SUCCESS)
-            return 1;
-    }
-
-    return 0;
-}
-#endif
-
-#ifndef EDUKE32_TOUCH_DEVICES
-#if defined EDUKE32_OSX || defined __linux__ || defined EDUKE32_BSD
-static void G_AddSteamPaths(const char *basepath)
-{
-    UNREFERENCED_PARAMETER(basepath);
-#if 0
-    char buf[BMAX_PATH];
-
-    // PORT-TODO:
-    // Duke Nukem 3D: Megaton Edition (Steam)
-    Bsnprintf(buf, sizeof(buf), "%s/steamapps/common/Duke Nukem 3D/gameroot", basepath);
-    addsearchpath(buf);
-    Bsnprintf(buf, sizeof(buf), "%s/steamapps/common/Duke Nukem 3D/gameroot/addons/dc", basepath);
-    addsearchpath_user(buf, SEARCHPATH_REMOVE);
-    Bsnprintf(buf, sizeof(buf), "%s/steamapps/common/Duke Nukem 3D/gameroot/addons/nw", basepath);
-    addsearchpath_user(buf, SEARCHPATH_REMOVE);
-    Bsnprintf(buf, sizeof(buf), "%s/steamapps/common/Duke Nukem 3D/gameroot/addons/vacation", basepath);
-    addsearchpath_user(buf, SEARCHPATH_REMOVE);
-
-    // Duke Nukem 3D (3D Realms Anthology (Steam) / Kill-A-Ton Collection 2015)
-#if defined EDUKE32_OSX
-    Bsnprintf(buf, sizeof(buf), "%s/steamapps/common/Duke Nukem 3D/Duke Nukem 3D.app/drive_c/Program Files/Duke Nukem 3D", basepath);
-    addsearchpath_user(buf, SEARCHPATH_REMOVE);
-#endif
-#endif
-}
-
-// A bare-bones "parser" for Valve's KeyValues VDF format.
-// There is no guarantee this will function properly with ill-formed files.
-static void KeyValues_SkipWhitespace(char **vdfbuf, char * const vdfbufend)
-{
-    while (((*vdfbuf)[0] == ' ' || (*vdfbuf)[0] == '\n' || (*vdfbuf)[0] == '\r' || (*vdfbuf)[0] == '\t' || (*vdfbuf)[0] == '\0') && *vdfbuf < vdfbufend)
-        (*vdfbuf)++;
-
-    // comments
-    if ((*vdfbuf) + 2 < vdfbufend && (*vdfbuf)[0] == '/' && (*vdfbuf)[1] == '/')
-    {
-        while ((*vdfbuf)[0] != '\n' && (*vdfbuf)[0] != '\r' && *vdfbuf < vdfbufend)
-            (*vdfbuf)++;
-
-        KeyValues_SkipWhitespace(vdfbuf, vdfbufend);
-    }
-}
-static void KeyValues_SkipToEndOfQuotedToken(char **vdfbuf, char * const vdfbufend)
-{
-    (*vdfbuf)++;
-    while ((*vdfbuf)[0] != '\"' && (*vdfbuf)[-1] != '\\' && *vdfbuf < vdfbufend)
-        (*vdfbuf)++;
-}
-static void KeyValues_SkipToEndOfUnquotedToken(char **vdfbuf, char * const vdfbufend)
-{
-    while ((*vdfbuf)[0] != ' ' && (*vdfbuf)[0] != '\n' && (*vdfbuf)[0] != '\r' && (*vdfbuf)[0] != '\t' && (*vdfbuf)[0] != '\0' && *vdfbuf < vdfbufend)
-        (*vdfbuf)++;
-}
-static void KeyValues_SkipNextWhatever(char **vdfbuf, char * const vdfbufend)
-{
-    KeyValues_SkipWhitespace(vdfbuf, vdfbufend);
-
-    if (*vdfbuf == vdfbufend)
-        return;
-
-    if ((*vdfbuf)[0] == '{')
-    {
-        (*vdfbuf)++;
-        do
-        {
-            KeyValues_SkipNextWhatever(vdfbuf, vdfbufend);
-        }
-        while ((*vdfbuf)[0] != '}');
-        (*vdfbuf)++;
-    }
-    else if ((*vdfbuf)[0] == '\"')
-        KeyValues_SkipToEndOfQuotedToken(vdfbuf, vdfbufend);
-    else if ((*vdfbuf)[0] != '}')
-        KeyValues_SkipToEndOfUnquotedToken(vdfbuf, vdfbufend);
-
-    KeyValues_SkipWhitespace(vdfbuf, vdfbufend);
-}
-static char* KeyValues_NormalizeToken(char **vdfbuf, char * const vdfbufend)
-{
-    char *token = *vdfbuf;
-
-    if ((*vdfbuf)[0] == '\"' && *vdfbuf < vdfbufend)
-    {
-        token++;
-
-        KeyValues_SkipToEndOfQuotedToken(vdfbuf, vdfbufend);
-        (*vdfbuf)[0] = '\0';
-
-        // account for escape sequences
-        char *writeseeker = token, *readseeker = token;
-        while (readseeker <= *vdfbuf)
-        {
-            if (readseeker[0] == '\\')
-                readseeker++;
-
-            writeseeker[0] = readseeker[0];
-
-            writeseeker++;
-            readseeker++;
-        }
-
-        return token;
-    }
-
-    KeyValues_SkipToEndOfUnquotedToken(vdfbuf, vdfbufend);
-    (*vdfbuf)[0] = '\0';
-
-    return token;
-}
-static void KeyValues_FindKey(char **vdfbuf, char * const vdfbufend, const char *token)
-{
-    char *ParentKey = KeyValues_NormalizeToken(vdfbuf, vdfbufend);
-    if (token != NULL) // pass in NULL to find the next key instead of a specific one
-        while (Bstrcmp(ParentKey, token) != 0 && *vdfbuf < vdfbufend)
-        {
-            KeyValues_SkipNextWhatever(vdfbuf, vdfbufend);
-            ParentKey = KeyValues_NormalizeToken(vdfbuf, vdfbufend);
-        }
-
-    KeyValues_SkipWhitespace(vdfbuf, vdfbufend);
-}
-static int32_t KeyValues_FindParentKey(char **vdfbuf, char * const vdfbufend, const char *token)
-{
-    KeyValues_SkipWhitespace(vdfbuf, vdfbufend);
-
-    // end of scope
-    if ((*vdfbuf)[0] == '}')
-        return 0;
-
-    KeyValues_FindKey(vdfbuf, vdfbufend, token);
-
-    // ignore the wrong type
-    while ((*vdfbuf)[0] != '{' && *vdfbuf < vdfbufend)
-    {
-        KeyValues_SkipNextWhatever(vdfbuf, vdfbufend);
-        KeyValues_FindKey(vdfbuf, vdfbufend, token);
-    }
-
-    if (*vdfbuf == vdfbufend)
-        return 0;
-
-    return 1;
-}
-static char* KeyValues_FindKeyValue(char **vdfbuf, char * const vdfbufend, const char *token)
-{
-    KeyValues_SkipWhitespace(vdfbuf, vdfbufend);
-
-    // end of scope
-    if ((*vdfbuf)[0] == '}')
-        return NULL;
-
-    KeyValues_FindKey(vdfbuf, vdfbufend, token);
-
-    // ignore the wrong type
-    while ((*vdfbuf)[0] == '{' && *vdfbuf < vdfbufend)
-    {
-        KeyValues_SkipNextWhatever(vdfbuf, vdfbufend);
-        KeyValues_FindKey(vdfbuf, vdfbufend, token);
-    }
-
-    KeyValues_SkipWhitespace(vdfbuf, vdfbufend);
-
-    if (*vdfbuf == vdfbufend)
-        return NULL;
-
-    return KeyValues_NormalizeToken(vdfbuf, vdfbufend);
-}
-
-static void G_ParseSteamKeyValuesForPaths(const char *vdf)
-{
-    int32_t fd = Bopen(vdf, BO_RDONLY);
-    int32_t size = Bfilelength(fd);
-    char *vdfbufstart, *vdfbuf, *vdfbufend;
-
-    if (size <= 0)
-        return;
-
-    vdfbufstart = vdfbuf = (char*)Xmalloc(size);
-    size = (int32_t)Bread(fd, vdfbuf, size);
-    Bclose(fd);
-    vdfbufend = vdfbuf + size;
-
-    if (KeyValues_FindParentKey(&vdfbuf, vdfbufend, "LibraryFolders"))
-    {
-        char *result;
-        vdfbuf++;
-        while ((result = KeyValues_FindKeyValue(&vdfbuf, vdfbufend, NULL)) != NULL)
-            G_AddSteamPaths(result);
-    }
-
-    Bfree(vdfbufstart);
-}
-#endif
-#endif
-
-void G_AddSearchPaths(void)
-{
-#ifndef EDUKE32_TOUCH_DEVICES
-#if defined __linux__ || defined EDUKE32_BSD
-    char buf[BMAX_PATH];
-    char *homepath = Bgethomedir();
-
-    Bsnprintf(buf, sizeof(buf), "%s/.steam/steam", homepath);
-    G_AddSteamPaths(buf);
-
-    Bsnprintf(buf, sizeof(buf), "%s/.steam/steam/steamapps/libraryfolders.vdf", homepath);
-    G_ParseSteamKeyValuesForPaths(buf);
-
-    Bfree(homepath);
-
-    addsearchpath("/usr/share/games/nblood");
-    addsearchpath("/usr/local/share/games/nblood");
-#elif defined EDUKE32_OSX
-    char buf[BMAX_PATH];
-    int32_t i;
-    char *applications[] = { osx_getapplicationsdir(0), osx_getapplicationsdir(1) };
-    char *support[] = { osx_getsupportdir(0), osx_getsupportdir(1) };
-
-    for (i = 0; i < 2; i++)
-    {
-        Bsnprintf(buf, sizeof(buf), "%s/Steam", support[i]);
-        G_AddSteamPaths(buf);
-
-        Bsnprintf(buf, sizeof(buf), "%s/Steam/steamapps/libraryfolders.vdf", support[i]);
-        G_ParseSteamKeyValuesForPaths(buf);
-
-#if 0
-        // Duke Nukem 3D: Atomic Edition (GOG.com)
-        Bsnprintf(buf, sizeof(buf), "%s/Duke Nukem 3D.app/Contents/Resources/Duke Nukem 3D.boxer/C.harddisk", applications[i]);
-        addsearchpath_user(buf, SEARCHPATH_REMOVE);
-#endif
-    }
-
-    for (i = 0; i < 2; i++)
-    {
-        Bsnprintf(buf, sizeof(buf), "%s/NBlood", support[i]);
-        addsearchpath(buf);
-    }
-
-    for (i = 0; i < 2; i++)
-    {
-        Bfree(applications[i]);
-        Bfree(support[i]);
-    }
-#elif defined (_WIN32)
-    char buf[BMAX_PATH] = {0};
-    DWORD bufsize;
-
-    // Blood: One Unit Whole Blood (Steam)
-    bufsize = sizeof(buf);
-    if (G_ReadRegistryValue(R"(SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 299030)", "InstallLocation", buf, &bufsize))
-    {
-        addsearchpath_user(buf, SEARCHPATH_REMOVE);
-    }
-
-    // Blood: One Unit Whole Blood (GOG.com)
-    bufsize = sizeof(buf);
-    if (G_ReadRegistryValue("SOFTWARE\\GOG.com\\GOGONEUNITONEBLOOD", "PATH", buf, &bufsize))
-    {
-        addsearchpath_user(buf, SEARCHPATH_REMOVE);
-    }
-#endif
-#endif
-}
-
 void G_CleanupSearchPaths(void)
 {
     removesearchpaths_withuser(SEARCHPATH_REMOVE);
 }
 
-//////////
 
-struct strllist *CommandPaths, *CommandGrps;
+struct strllist *CommandPaths = NULL, *CommandGrps = NULL;
 
 void G_AddGroup(const char *buffer)
 {
-    char buf[BMAX_PATH];
+    char buf[BMAX_PATH+1] = { 0 };
 
     struct strllist *s = (struct strllist *)Xcalloc(1,sizeof(struct strllist));
 
@@ -595,18 +271,16 @@ void G_AddPath(const char *buffer)
 void G_LoadGroupsInDir(const char *dirname)
 {
     static const char *extensions[] = { "*.grp", "*.zip", "*.ssi", "*.pk3", "*.pk4" };
-    char buf[BMAX_PATH];
+    char buf[BMAX_PATH+1] = { 0 };
     fnlist_t fnlist = FNLIST_INITIALIZER;
 
     for (auto & extension : extensions)
     {
-        CACHE1D_FIND_REC *rec;
-
         fnlist_getnames(&fnlist, dirname, extension, -1, 0);
 
-        for (rec=fnlist.findfiles; rec; rec=rec->next)
+        for (CACHE1D_FIND_REC *rec=fnlist.findfiles; rec; rec=rec->next)
         {
-            Bsnprintf(buf, sizeof(buf), "%s/%s", dirname, rec->name);
+            Bsnprintf(buf, BMAX_PATH, "%s/%s", dirname, rec->name);
             initprintf("Using group file \"%s\".\n", buf);
             initgroupfile(buf);
         }
@@ -617,9 +291,9 @@ void G_LoadGroupsInDir(const char *dirname)
 
 void G_DoAutoload(const char *dirname)
 {
-    char buf[BMAX_PATH];
+    char buf[BMAX_PATH+1] = { 0 };
 
-    Bsnprintf(buf, sizeof(buf), "autoload/%s", dirname);
+    Bsnprintf(buf, BMAX_PATH, "autoload/%s", dirname);
     G_LoadGroupsInDir(buf);
 }
 
@@ -726,4 +400,3 @@ success:
 }
 
 #endif
-

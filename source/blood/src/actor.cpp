@@ -2393,8 +2393,8 @@ EXPLOSION explodeInfo[] = {
 
 int gDudeDrag = 0x2a00;
 
-short gAffectedSectors[kMaxSectors];
-short gAffectedXWalls[kMaxXWalls];
+short gAffectedSectors[kMaxSectors] = { 0 };
+short gAffectedXWalls[kMaxXWalls] = { 0 };
 short gPlayerGibThingComments[] = {
     734, 735, 736, 737, 738, 739, 740, 741, 3038, 3049
 };
@@ -2426,7 +2426,8 @@ struct POSTPONE {
 
 POSTPONE gPost[kMaxSprites];
 
-static char buffer[120];
+#define ACC_BUFF_SIZE 120
+static char buffer[ACC_BUFF_SIZE+1] = { 0 };
 
 bool IsItemSprite(spritetype *pSprite)
 {
@@ -2605,8 +2606,7 @@ void actInit(void)
     }
     else
     {
-        char unk[kDudeMax-kDudeBase];
-        memset(unk, 0, sizeof(unk));
+        char unk[kDudeMax-kDudeBase] = { 0 };
         for (int nSprite = headspritestat[6]; nSprite >= 0; nSprite = nextspritestat[nSprite])
         {
             spritetype *pSprite = &sprite[nSprite];
@@ -2711,12 +2711,17 @@ void ConcussSprite(int a1, spritetype *pSprite, int x, int y, int z, int a6)
 
 int actWallBounceVector(int *x, int *y, int nWall, int a4)
 {
-    int wx, wy;
+    int wx = 0,
+        wy = 0;
+
     GetWallNormal(nWall, &wx, &wy);
+
     int t = dmulscale16(*x, wx, *y, wy);
     int t2 = mulscale16r(t, a4+0x10000);
+
     *x -= mulscale16(wx, t2);
     *y -= mulscale16(wy, t2);
+
     return mulscale16r(t, 0x10000-a4);
 }
 
@@ -2750,7 +2755,7 @@ void sub_2A620(int nSprite, int x, int y, int z, int nSector, int nDist, int a7,
 {
     UNREFERENCED_PARAMETER(a12);
     UNREFERENCED_PARAMETER(a13);
-    char va0[(kMaxSectors+7)>>3];
+    char va0[(kMaxSectors+7)>>3] = { 0 };
     int nOwner = actSpriteIdToOwnerId(nSprite);
     gAffectedSectors[0] = 0;
     gAffectedXWalls[0] = 0;
@@ -2771,17 +2776,14 @@ void sub_2A620(int nSprite, int x, int y, int z, int nSector, int nDist, int a7,
                         continue;
                     if (!CheckProximity(pSprite2, x, y, z, nSector, nDist))
                         continue;
-                    int dx = klabs(x-pSprite2->x);
-                    int dy = klabs(y-pSprite2->y);
-                    int dz = klabs(z-pSprite2->z)>>4;
+                    int dx = klabs(x-pSprite2->x),
+                        dy = klabs(y-pSprite2->y),
+                        dz = klabs(z-pSprite2->z)>>4;
+
                     int dist = ksqrt(dx*dx+dy*dy+dz*dz);
                     if (dist > nDist)
                         continue;
-                    int vcx;
-                    if (dist != 0)
-                        vcx = a7+((nDist-dist)*a8)/nDist;
-                    else
-                        vcx = a7+a8;
+                    int vcx = (0 != dist) ? a7+((nDist-dist)*a8)/nDist : a7+a8;
                     actDamageSprite(nSprite, pSprite2, a9, vcx<<4);
                     if (a11)
                         actBurnSprite(nOwner, &xsprite[pSprite2->extra], a11);
@@ -2803,16 +2805,15 @@ void sub_2A620(int nSprite, int x, int y, int z, int nSector, int nDist, int a7,
             XSPRITE *pXSprite2 = &xsprite[pSprite2->extra];
             if (pXSprite2->locked)
                 continue;
-            int dx = klabs(x-pSprite2->x);
-            int dy = klabs(y-pSprite2->y);
+            int dx = klabs(x-pSprite2->x),
+                dy = klabs(y-pSprite2->y);
+
             int dist = ksqrt(dx*dx+dy*dy);
+
             if (dist > nDist)
                 continue;
-            int vcx;
-            if (dist != 0)
-                vcx = a7+((nDist-dist)*a8)/nDist;
-            else
-                vcx = a7+a8;
+
+            int vcx = (0 != dist) ? a7+((nDist-dist)*a8)/nDist : a7+a8;
             actDamageSprite(nSprite, pSprite2, a9, vcx<<4);
             if (a11)
                 actBurnSprite(nOwner, pXSprite2, a11);
@@ -2832,17 +2833,15 @@ void sub_2AA94(spritetype *pSprite, XSPRITE *pXSprite)
     if (pXSprite->data4 > 1)
     {
         GibSprite(pSprite, GIBTYPE_5, NULL, NULL);
-        int v14[2];
-        v14[0] = pXSprite->data4>>1;
-        v14[1] = pXSprite->data4-v14[0];
-        int v4 = pSprite->ang;
-        xvel[pSprite->index] = 0;
-        yvel[pSprite->index] = 0;
-        zvel[pSprite->index] = 0;
-        for (int i = 0; i < 2; i++)
+        int v14[2] = { (pXSprite->data4>>1), (pXSprite->data4-v14[0]) },
+            v4 = pSprite->ang;
+
+        xvel[pSprite->index] = yvel[pSprite->index] = zvel[pSprite->index] = 0;
+        for (int i = 0; i < 2; ++i)
         {
-            int t1 = Random(0x33333)+0x33333;
-            int t2 = Random2(0x71);
+            int t1 = Random(0x33333)+0x33333,
+                t2 = Random2(0x71);
+
             pSprite->ang = (t2+v4+2048)&2047;
             spritetype *pSprite2 = actFireThing(pSprite, 0, 0, -0x93d0, 428, t1);
             XSPRITE *pXSprite2 = &xsprite[pSprite2->extra];
@@ -2961,7 +2960,9 @@ spritetype *actDropObject(spritetype *pSprite, int nType)
         pSprite2 = actDropWeapon(pSprite, nType);
     if (pSprite2)
     {
-        int top, bottom;
+        int top    = 0,
+            bottom = 0;
+
         GetSpriteExtents(pSprite2, &top, &bottom);
         if (bottom >= pSprite2->z)
             pSprite2->z -= bottom - pSprite2->z;
@@ -3540,7 +3541,7 @@ int actDamageSprite(int nSource, spritetype *pSprite, DAMAGE_TYPE a3, int a4)
     {
         if (pSprite->type < kDudeBase || pSprite->type >= kDudeMax)
         {
-            sprintf(buffer, "Bad Dude Failed: initial=%d type=%d %s\n", (int)pSprite->zvel, (int)pSprite->type, (int)(pSprite->hitag&16) ? "RESPAWN" : "NORMAL");
+            snprintf(buffer, ACC_BUFF_SIZE, "Bad Dude Failed: initial=%d type=%d %s\n", (int)pSprite->zvel, (int)pSprite->type, (int)(pSprite->hitag&16) ? "RESPAWN" : "NORMAL");
             ThrowError(buffer);
         }
         dassert(pSprite->type >= kDudeBase && pSprite->type < kDudeMax);
