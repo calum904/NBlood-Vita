@@ -505,21 +505,12 @@ char *Bstrtoken(char *s, const char *delim, char **ptrptr, int chop)
 
 char *Bstrtolower(char *str)
 {
-    if (!str)
-        return NULL;
+    if (NULL != str) {
+        size_t len = Bstrlen(str);
 
-    int len = Bstrlen(str);
-
-    if (len <= 0)
-        return str;
-
-    int i = 0;
-
-    do
-    {
-        *(str + i) = Btolower(*(str + i));
-        i++;
-    } while (--len);
+        for(uint32_t i=0;0!=len;++i,--len)
+            str[i] = Btolower(str[i]);
+    }
 
     return str;
 }

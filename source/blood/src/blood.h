@@ -215,7 +215,7 @@ enum INPUT_MODE {
 extern Resource gSysRes, gGuiRes;
 extern INPUT_MODE gInputMode;
 extern ud_setup_t gSetup;
-extern char SetupFilename[BMAX_PATH];
+extern char SetupFilename[BMAX_PATH+1];
 extern int32_t gNoSetup;
 extern short BloodVersion;
 extern int gNetPlayers;

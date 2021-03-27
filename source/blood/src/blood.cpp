@@ -66,54 +66,48 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "warp.h"
 #include "weapon.h"
 
-#ifdef _WIN32
-# include <shellapi.h>
-# define UPDATEINTERVAL 604800 // 1w
-# include "winbits.h"
-#else
-# if !defined(GEKKO) && !defined(__PSP2__)
-#  include <sys/ioctl.h>
-# endif
-#endif /* _WIN32 */
+#define TEMP_BUFF_SIZE        128
+#define THROW_ERROR_BUFF_SIZE 256
 
-const char* AppProperName = APPNAME;
-const char* AppTechnicalName = APPBASENAME;
+const char *AppProperName    = APPNAME,
+           *AppTechnicalName = APPBASENAME;
 
-char qsprite_filler[kMaxSprites], qsector_filler[kMaxSectors];
+char qsprite_filler[kMaxSprites+1] = { 0 },
+     qsector_filler[kMaxSectors+1] = { 0 };
 
-ud_setup_t gSetup;
-char SetupFilename[BMAX_PATH] = SETUPFILENAME;
+ud_setup_t gSetup = { 0 };
+char SetupFilename[BMAX_PATH+1] = SETUPFILENAME;
 int32_t gNoSetup = 0, gCommandSetup = 0;
 
 Resource gSysRes, gGuiRes;
 
-INPUT_MODE gInputMode;
+INPUT_MODE gInputMode = 0;
 
 unsigned int nMaxAlloc = 0x4000000;
 
-bool bCustomName = false;
-char bAddUserMap = false;
-bool bNoDemo = true;
-bool bQuickStart = true;
-bool bNoAutoLoad = false;
+bool bNoDemo     = true, /* FIXME: Vita Hangs if this is false */
+     bVanilla    = false,
+     bCustomName = false,
+     bAddUserMap = false,
+     bQuickStart = true,
+     bNoAutoLoad = false;
 
-bool bVanilla = false;
-
-char gUserMapFilename[BMAX_PATH];
-char gPName[MAXPLAYERNAME];
+char gPName[MAXPLAYERNAME+1]       = { 0 },
+     gUserMapFilename[BMAX_PATH+1] = { 0 };
 
 short BloodVersion = 0x115;
 
-int gNetPlayers;
+int gNetPlayers = 0;
 
-char *pUserTiles = NULL;
-char *pUserSoundRFF = NULL;
-char *pUserRFF = NULL;
+char *pUserRFF      = NULL,
+     *pUserTiles    = NULL,
+     *pUserSoundRFF = NULL;
 
 int gChokeCounter = 0;
 
-double g_gameUpdateTime, g_gameUpdateAndDrawTime;
-double g_gameUpdateAvgTime = 0.001;
+double g_gameUpdateTime        = 0,
+       g_gameUpdateAvgTime     = 0.001,
+       g_gameUpdateAndDrawTime = 0;
 
 enum gametokens
 {
@@ -148,7 +142,7 @@ enum gametokens
     T_RFFDEFINEID,
 };
 
-int blood_globalflags;
+int blood_globalflags = 0;
 
 void app_crashhandler(void)
 {
@@ -176,13 +170,13 @@ void _SetErrorLoc(const char *pzFile, int nLine)
 
 void _ThrowError(const char *pzFormat, ...)
 {
-    char buffer[256];
+    char buffer[THROW_ERROR_BUFF_SIZE+1] = { 0 };
     va_list args;
     va_start(args, pzFormat);
     vsprintf(buffer, pzFormat, args);
     initprintf("%s(%i): %s\n", _module, _line, buffer);
 
-    char titlebuf[256];
+    char titlebuf[THROW_ERROR_BUFF_SIZE+1] = { 0 };
     Bsprintf(titlebuf, APPNAME " %s", s_buildRev);
     wm_msgbox(titlebuf, "%s(%i): %s\n", _module, _line, buffer);
 
@@ -194,7 +188,7 @@ void __dassert(const char * pzExpr, const char * pzFile, int nLine)
 {
     initprintf("Assertion failed: %s in file %s at line %i\n", pzExpr, pzFile, nLine);
 
-    char titlebuf[256];
+    char titlebuf[THROW_ERROR_BUFF_SIZE+1] = { 0 };
     Bsprintf(titlebuf, APPNAME " %s", s_buildRev);
     wm_msgbox(titlebuf, "Assertion failed: %s in file %s at line %i\n", pzExpr, pzFile, nLine);
 
@@ -217,7 +211,7 @@ void ShutDown(void)
     // PORT_TODO: Check argument
     if (syncstate)
         printf("A packet was lost! (syncstate)\n");
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 10; ++i)
     {
         if (gSaveGamePic[i])
             Resource::Free(gSaveGamePic[i]);
@@ -233,7 +227,7 @@ void QuitGame(void)
     exit(0);
 }
 
-int nPrecacheCount;
+int nPrecacheCount = 0;
 
 void PrecacheDude(spritetype *pSprite)
 {
@@ -317,6 +311,8 @@ void PrecacheDude(spritetype *pSprite)
         seqPrecacheId(pDudeInfo->seqStartID+13);
         seqPrecacheId(pDudeInfo->seqStartID+14);
         break;
+    default:
+        break;
     }
 }
 
@@ -359,20 +355,20 @@ void PreloadTiles(void)
 {
     int skyTile = -1;
     memset(gotpic,0,sizeof(gotpic));
-    for (int i = 0; i < numsectors; i++)
+    for (int i = 0; i < numsectors; ++i)
     {
         tilePrecacheTile(sector[i].floorpicnum, 0);
         tilePrecacheTile(sector[i].ceilingpicnum, 0);
         if ((sector[i].ceilingstat&1) != 0 && skyTile == -1)
             skyTile = sector[i].ceilingpicnum;
     }
-    for (int i = 0; i < numwalls; i++)
+    for (int i = 0; i < numwalls; ++i)
     {
         tilePrecacheTile(wall[i].picnum, 0);
         if (wall[i].overpicnum >= 0)
             tilePrecacheTile(wall[i].overpicnum, 0);
     }
-    for (int i = 0; i < kMaxSprites; i++)
+    for (int i = 0; i < kMaxSprites; ++i)
     {
         if (sprite[i].statnum < kMaxStatus)
         {
@@ -407,20 +403,20 @@ void PreloadTiles(void)
     }
     if (skyTile > -1 && skyTile < kMaxTiles)
     {
-        for (int i = 1; i < gSkyCount; i++)
+        for (int i = 1; i < gSkyCount; ++i)
             tilePrecacheTile(skyTile+i, 0);
     }
     G_HandleAsync();
 }
 
-char precachehightile[2][(MAXTILES+7)>>3];
+char precachehightile[2][(MAXTILES+7)>>3] { { 0 }, { 0 } };
 #ifdef USE_OPENGL
 void PrecacheExtraTextureMaps(int nTile)
 {
     // PRECACHE
     if (useprecache && bpp > 8)
     {
-        for (int type = 0; type < 2 && !KB_KeyPressed(sc_Space); type++)
+        for (int type = 0; type < 2 && !KB_KeyPressed(sc_Space); ++type)
         {
             if (TestBitString(precachehightile[type], nTile))
             {
@@ -460,7 +456,7 @@ void PrecacheExtraTextureMaps(int nTile)
 
 void PreloadCache(void)
 {
-    char tempbuf[128];
+    char tempbuf[TEMP_BUFF_SIZE+1] = { 0 };
     if (gDemo.at1)
         return;
     sndPlaySpecialMusicOrNothing(MUS_LOADING);
@@ -470,7 +466,7 @@ void PreloadCache(void)
     int cnt = 0;
     int percentDisplayed = -1;
 
-    for (int i=0; i<kMaxTiles && !KB_KeyPressed(sc_Space); i++)
+    for (int i=0; i<kMaxTiles && !KB_KeyPressed(sc_Space); ++i)
     {
         if (TestBitString(gotpic, i))
         {
@@ -522,16 +518,16 @@ void EndLevel(void)
 }
 
 PLAYER gPlayerTemp[kMaxPlayers];
-int gHealthTemp[kMaxPlayers];
+int gHealthTemp[kMaxPlayers] = { 0 };
 
 vec3_t startpos;
-int16_t startang, startsectnum;
+int16_t startang     = 0,
+        startsectnum = 0;
 
 void StartLevel(GAMEOPTIONS *gameOptions)
 {
     EndLevel();
-    gStartNewGame = 0;
-    ready2send = 0;
+    ready2send = gStartNewGame = 0;
     if (gDemo.at0 && gGameStarted)
         gDemo.Close();
     netWaitForEveryone(0);
@@ -661,9 +657,8 @@ void StartLevel(GAMEOPTIONS *gameOptions)
     trInit();
     ambInit();
     sub_79760();
-    gCacheMiss = 0;
-    gFrame = 0;
-    gChokeCounter = 0;
+    gFrame = gCacheMiss = gChokeCounter = 0;
+
     if (!gDemo.at1)
         gGameMenuMgr.Deactivate();
     levelTryPlayMusicOrNothing(gGameOptions.nEpisode, gGameOptions.nLevel);
@@ -673,10 +668,9 @@ void StartLevel(GAMEOPTIONS *gameOptions)
     if (gGameOptions.nGameType == 3)
         gGameMessageMgr.SetCoordinates(gViewX0S+1,gViewY0S+15);
     netWaitForEveryone(0);
-    gGameClock = 0;
-    gPaused = 0;
-    gGameStarted = 1;
-    ready2send = 1;
+
+    gPaused    = gGameClock   = 0;
+    ready2send = gGameStarted = 1;
 }
 
 void StartNetworkLevel(void)
@@ -685,15 +679,17 @@ void StartNetworkLevel(void)
         gDemo.Close();
     if (!(gGameOptions.uGameFlags&1))
     {
-        gGameOptions.nEpisode = gPacketStartGame.episodeId;
-        gGameOptions.nLevel = gPacketStartGame.levelId;
-        gGameOptions.nGameType = gPacketStartGame.gameType;
-        gGameOptions.nDifficulty = gPacketStartGame.difficulty;
+        gGameOptions.nEpisode         = gPacketStartGame.episodeId;
+        gGameOptions.nLevel           = gPacketStartGame.levelId;
+        gGameOptions.nGameType        = gPacketStartGame.gameType;
+        gGameOptions.nDifficulty      = gPacketStartGame.difficulty;
+
         gGameOptions.nMonsterSettings = gPacketStartGame.monsterSettings;
-        gGameOptions.nWeaponSettings = gPacketStartGame.weaponSettings;
-        gGameOptions.nItemSettings = gPacketStartGame.itemSettings;
+        gGameOptions.nWeaponSettings  = gPacketStartGame.weaponSettings;
+        gGameOptions.nItemSettings    = gPacketStartGame.itemSettings;
         gGameOptions.nRespawnSettings = gPacketStartGame.respawnSettings;
-        if (gPacketStartGame.userMap)
+
+        if ('\0' != gPacketStartGame.userMap)
             levelAddUserMap(gPacketStartGame.userMapName);
         else
             levelSetupOptions(gGameOptions.nEpisode, gGameOptions.nLevel);
@@ -703,9 +699,10 @@ void StartNetworkLevel(void)
 
 void LocalKeys(void)
 {
-    char alt = keystatus[sc_LeftAlt] | keystatus[sc_RightAlt];
-    char ctrl = keystatus[sc_LeftControl] | keystatus[sc_RightControl];
-    char shift = keystatus[sc_LeftShift] | keystatus[sc_RightShift];
+    char alt  = keystatus[sc_LeftAlt]      | keystatus[sc_RightAlt],
+         ctrl  = keystatus[sc_LeftControl] | keystatus[sc_RightControl],
+         shift = keystatus[sc_LeftShift]   | keystatus[sc_RightShift];
+
     if (BUTTON(gamefunc_See_Chase_View) && !alt && !shift)
     {
         CONTROL_ClearButton(gamefunc_See_Chase_View);
@@ -738,7 +735,7 @@ void LocalKeys(void)
             gView = &gPlayer[gViewIndex];
         }
     }
-    char key;
+    char key = '\0';
     if ((key = keyGetScan()) != 0)
     {
         if ((alt || shift) && gGameOptions.nGameType > 0 && key >= 0x3b && key <= 0x44)
@@ -858,7 +855,7 @@ bool gRestartGame = false;
 
 void ProcessFrame(void)
 {
-    char buffer[128];
+    char buffer[TEMP_BUFF_SIZE+1] = { 0 };
     for (int i = connecthead; i >= 0; i = connectpoint2[i])
     {
         gPlayer[i].atc.buttonFlags = gFifoInput[gNetFifoTail&255][i].buttonFlags;
@@ -906,7 +903,7 @@ void ProcessFrame(void)
             gPaused = !gPaused;
             if (gPaused && gGameOptions.nGameType > 0 && numplayers > 1)
             {
-                sprintf(buffer,"%s paused the game",gProfile[i].name);
+                snprintf(buffer, TEMP_BUFF_SIZE, "%s paused the game", gProfile[i].name);
                 viewSetMessage(buffer);
             }
         }
@@ -975,8 +972,7 @@ void ProcessFrame(void)
                 gGameMenuMgr.Push(&menuCredits,-1);
             }
             gGameOptions.uGameFlags &= ~3;
-            gRestartGame = 1;
-            gQuitGame = 1;
+            gQuitGame = gRestartGame = 1;
         }
         else
         {
@@ -1037,7 +1033,7 @@ SWITCH switches[] = {
 
 void PrintHelp(void)
 {
-    char tempbuf[128];
+    char tempbuf[TEMP_BUFF_SIZE+1] = { 0 };
     static char const s[] = "Usage: " APPBASENAME " [files] [options]\n"
         "Example: " APPBASENAME " -usecwd -cfg myconfig.cfg -map nukeland.map\n\n"
         "Files can be of type [grp|zip|map|def]\n"
@@ -1069,7 +1065,7 @@ void PrintHelp(void)
         "-usecwd\t\tRead data and configuration from current directory\n"
         ;
 #ifdef WM_MSGBOX_WINDOW
-    Bsnprintf(tempbuf, sizeof(tempbuf), APPNAME " %s", s_buildRev);
+    Bsnprintf(tempbuf, TEMP_BUFF_SIZE, APPNAME " %s", s_buildRev);
     wm_msgbox(tempbuf, s);
 #else
     initprintf("%s\n", s);
@@ -1105,7 +1101,7 @@ void PrintHelp(void)
 
 void ParseOptions(void)
 {
-    int option;
+    int option = 0;
     while ((option = GetOptions(switches)) != -1)
     {
         switch (option)
@@ -1370,7 +1366,7 @@ void ParseOptions(void)
 
 void ClockStrobe()
 {
-    gGameClock++;
+    ++gGameClock;
 }
 
 #if defined(_WIN32) && defined(DEBUGGINGAIDS)
@@ -1383,26 +1379,9 @@ static int32_t check_filename_casing(void)
 
 int app_main(int argc, char const * const * argv)
 {
-    char buffer[BMAX_PATH] = { 0 };
+    char buffer[BMAX_PATH+1] = { 0 };
     margc = argc;
     margv = argv;
-#ifdef _WIN32
-    if (!G_CheckCmdSwitch(argc, argv, "-noinstancechecking") && win_checkinstance())
-    {
-        if (!wm_ynbox(APPNAME, "Another Build game is currently running. "
-                      "Do you wish to continue starting this copy?"))
-            return 3;
-    }
-
-    backgroundidle = 0;
-
-    G_ExtPreInit(argc, argv);
-
-#ifdef DEBUGGINGAIDS
-    extern int32_t (*check_filename_casing_fn)(void);
-    check_filename_casing_fn = check_filename_casing;
-#endif
-#endif
 
     OSD_SetLogFile(APPBASENAME ".log");
 
@@ -1429,7 +1408,7 @@ int app_main(int argc, char const * const * argv)
 
     // used with binds for fast function lookup
     hash_init(&h_gamefuncs);
-    for (bssize_t i=NUMGAMEFUNCTIONS-1; i>=0; i--)
+    for (bssize_t i=NUMGAMEFUNCTIONS-1; i>=0; --i)
     {
         if (gamefunctions[i][0] == '\0')
             continue;
@@ -1531,8 +1510,8 @@ int app_main(int argc, char const * const * argv)
     initprintf("Loading tiles\n");
     if (pUserTiles)
     {
-        strcpy(buffer,pUserTiles);
-        strcat(buffer,"%03i.ART");
+        strncpy(buffer, pUserTiles, BMAX_PATH);
+        strncat(buffer, "%03i.ART", BMAX_PATH);
         if (!tileInit(0,buffer))
             ThrowError("User specified ART files not found");
     }
@@ -1593,27 +1572,29 @@ int app_main(int argc, char const * const * argv)
     scrSetDac();
 RESTART:
     sub_79760();
+
     gViewIndex = myconnectindex;
     gMe = gView = &gPlayer[myconnectindex];
+
     netBroadcastPlayerInfo(myconnectindex);
     initprintf("Waiting for network players!\n");
     netWaitForEveryone(0);
-    if (gRestartGame)
+    if (true == gRestartGame)
     {
         // Network error
-        gQuitGame = false;
-        gRestartGame = false;
+        gQuitGame = gRestartGame = false;
         netDeinitialize();
         netResetToSinglePlayer();
         goto RESTART;
     }
+
     UpdateNetworkMenus();
     if (!gDemo.at0 && gDemo.at59ef > 0 && gGameOptions.nGameType == 0 && !bNoDemo)
         gDemo.SetupPlayback(NULL);
     viewGetCrosshairColor();
     viewSetCrosshairColor(CrosshairColors.r, CrosshairColors.g, CrosshairColors.b);
-    gQuitGame = 0;
-    gRestartGame = 0;
+    gQuitGame = gRestartGame = 0;
+
     if (gGameOptions.nGameType > 0)
     {
         KB_ClearKeysDown();
@@ -1627,7 +1608,7 @@ RESTART:
     if (!bAddUserMap && !gGameStarted)
         gGameMenuMgr.Push(&menuMain, -1);
     ready2send = 1;
-    while (!gQuitGame)
+    while (false == gQuitGame)
     {
         if (handleevents() && quitevent)
         {
@@ -1654,8 +1635,8 @@ RESTART:
 
         OSD_DispatchQueued();
         
-        bool bDraw;
-        if (gGameStarted)
+        bool bDraw = false;
+        if (true == gGameStarted)
         {
             char gameUpdate = false;
             double const gameUpdateStartTime = timerGetHiTicks();
@@ -1672,8 +1653,8 @@ RESTART:
                 gNetFifoClock += 4;
                 while (gNetFifoHead[myconnectindex]-gNetFifoTail > gBufferJitter && !gStartNewGame && !gQuitGame)
                 {
-                    int i;
-                    for (i = connecthead; i >= 0; i = connectpoint2[i])
+                    int i = connecthead;
+                    for (; i >= 0; i = connectpoint2[i])
                         if (gNetFifoHead[i] == gNetFifoTail)
                             break;
                     if (i >= 0)
@@ -1685,7 +1666,7 @@ RESTART:
                 }
                 timerUpdate();
             }
-            if (gameUpdate)
+            if (true == gameUpdate)
             {
                 g_gameUpdateTime = timerGetHiTicks() - gameUpdateStartTime;
                 if (g_gameUpdateAvgTime < 0.f)
@@ -1717,7 +1698,8 @@ RESTART:
             if (gQuitRequest && !gQuitGame)
                 netBroadcastMyLogoff(gQuitRequest == 2);
         }
-        if (bDraw)
+
+        if (true == bDraw)
         {
             switch (gInputMode)
             {
@@ -1754,16 +1736,14 @@ RESTART:
     ready2send = 0;
     if (gDemo.at0)
         gDemo.Close();
-    if (gRestartGame)
+    if (true == gRestartGame)
     {
         UpdateDacs(0, true);
         sndStopSong();
         FX_StopAllSounds();
-        gQuitGame = 0;
-        gQuitRequest = 0;
-        gRestartGame = 0;
-        gGameStarted = 0;
+        gQuitGame = gQuitRequest = gRestartGame = gGameStarted = 0;
         levelSetupOptions(0,0);
+
         while (gGameMenuMgr.m_bActive)
         {
             gGameMenuMgr.Process();
@@ -1774,6 +1754,7 @@ RESTART:
                 gGameMenuMgr.Draw();
             }
         }
+
         if (gGameOptions.nGameType != 0)
         {
             if (!gDemo.at0 && gDemo.at59ef > 0 && gGameOptions.nGameType == 0 && !bNoDemo)
@@ -1954,8 +1935,8 @@ static void parsedefinitions_game_animsounds(scriptfile *pScript, const char * b
 
 static int parsedefinitions_game(scriptfile *pScript, int firstPass)
 {
-    int   token;
-    char *pToken;
+    int   token = 0;
+    char *pToken = NULL;
 
     static const tokenlist tokens[] =
     {
@@ -2008,7 +1989,7 @@ static int parsedefinitions_game(scriptfile *pScript, int firstPass)
         {
         case T_LOADGRP:
         {
-            char *fileName;
+            char *fileName = NULL;
 
             pathsearchmode = 1;
             if (!scriptfile_getstring(pScript,&fileName) && firstPass)
@@ -2028,7 +2009,7 @@ static int parsedefinitions_game(scriptfile *pScript, int firstPass)
         break;
         case T_CACHESIZE:
         {
-            int32_t cacheSize;
+            int32_t cacheSize = 0;
 
             if (scriptfile_getnumber(pScript, &cacheSize) || !firstPass)
                 break;
@@ -2039,7 +2020,7 @@ static int parsedefinitions_game(scriptfile *pScript, int firstPass)
         break;
         case T_INCLUDE:
         {
-            char *fileName;
+            char *fileName = NULL;
 
             if (!scriptfile_getstring(pScript, &fileName))
                 parsedefinitions_game_include(fileName, pScript, pToken, firstPass);
@@ -2057,10 +2038,10 @@ static int parsedefinitions_game(scriptfile *pScript, int firstPass)
             break;
         case T_MUSIC:
         {
-            char *tokenPtr = pScript->ltextptr;
-            char *musicID  = NULL;
-            char *fileName = NULL;
-            char *musicEnd;
+            char *tokenPtr = pScript->ltextptr,
+                 *musicID  = NULL,
+                 *fileName = NULL,
+                 *musicEnd = NULL;
 
             if (scriptfile_getbraces(pScript, &musicEnd))
                 break;
@@ -2094,10 +2075,10 @@ static int parsedefinitions_game(scriptfile *pScript, int firstPass)
 
         case T_RFFDEFINEID:
         {
-            char *resName = NULL;
-            char *resType = NULL;
-            char *rffName = NULL;
-            int resID;
+            char *resName = NULL,
+                 *resType = NULL,
+                 *rffName = NULL;
+            int resID = 0;
 
             if (scriptfile_getstring(pScript, &resName))
                 break;
@@ -2284,13 +2265,13 @@ int loaddefinitions_game(const char *fileName, int32_t firstPass)
 {
     scriptfile *pScript = scriptfile_fromfile(fileName);
 
-    if (pScript)
+    if (NULL != pScript)
         parsedefinitions_game(pScript, firstPass);
 
     for (char const * m : g_defModules)
         parsedefinitions_game_include(m, NULL, "null", firstPass);
 
-    if (pScript)
+    if (NULL != pScript)
         scriptfile_close(pScript);
 
     scriptfile_clearsymbols();
@@ -2298,7 +2279,7 @@ int loaddefinitions_game(const char *fileName, int32_t firstPass)
     return 0;
 }
 
-INICHAIN *pINIChain;
+INICHAIN *pINIChain = NULL;
 INICHAIN const*pINISelected;
 int nINICount = 0;
 
@@ -2313,10 +2294,11 @@ INIDESCRIPTION gINIDescription[] = {
 
 bool AddINIFile(const char *pzFile, bool bForce = false)
 {
-    char *pzFN;
-    struct Bstat st;
+    char *pzFN = NULL;
+    struct Bstat st = { 0 };
     static INICHAIN *pINIIter = NULL;
-    if (!bForce)
+
+    if (false == bForce)
     {
         if (findfrompath(pzFile, &pzFN)) return false; // failed to resolve the filename
         if (Bstat(pzFN, &st))
@@ -2333,14 +2315,15 @@ bool AddINIFile(const char *pzFile, bool bForce = false)
         }
         delete pTempIni;
     }
-    if (!pINIChain)
+    if (NULL == pINIChain)
         pINIIter = pINIChain = new INICHAIN;
-    else
+    else /* TODO: This notation means make pINIter && pINIter->pNext = new INICHAIN. Which is maybe not what you want */
         pINIIter = pINIIter->pNext = new INICHAIN;
+
     pINIIter->pNext = NULL;
     pINIIter->pDescription = NULL;
     Bstrncpy(pINIIter->zName, pzFile, BMAX_PATH);
-    for (int i = 0; i < ARRAY_SSIZE(gINIDescription); i++)
+    for (int i = 0; i < ARRAY_SSIZE(gINIDescription); ++i)
     {
         if (!Bstrncasecmp(pINIIter->zName, gINIDescription[i].pzFilename, BMAX_PATH))
         {

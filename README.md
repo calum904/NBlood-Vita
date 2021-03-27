@@ -1,5 +1,5 @@
-# NBlood
-Blood port based on EDuke32
+# NBlood PlayStation Vita Port
+Blood port based on EDuke32 forked from [Rinnegatamante](https://github.com/Rinnegatamante/NBlood-Vita)
 
 ## Installing
 1. Extract NBlood to a new directory
@@ -18,6 +18,8 @@ Blood port based on EDuke32
 4. Launch NBlood
 
 ## Building NBlood
+Setup your development environment to have the [Vita Build Tools](https://vitasdk.org/) available. Type `make`.
+
 See: https://wiki.eduke32.com/wiki/Main_Page
 
 ## Acknowledgments:
@@ -27,7 +29,7 @@ See: https://wiki.eduke32.com/wiki/Main_Page
   * pogokeen
   * Plagman
   * Helixhorned
-  
+
 ### JFDuke3D by:
   * JonoF
   
@@ -37,6 +39,9 @@ See: https://wiki.eduke32.com/wiki/Main_Page
 ### NBlood programming:
   * Nuke.YKT
   
+### Blood Port by:
+  * Rinnegatamante
+
 ### Additional programming:
   * sirlemonhead
   
