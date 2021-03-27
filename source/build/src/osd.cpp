@@ -1524,7 +1524,7 @@ void OSD_Draw(void)
 
     int topoffs = osd->draw.head * osd->draw.cols;
     int row     = osdrowscur - 1;
-    int lines   = min(osd->text.lines - osd->draw.head, (long int)osdrowscur);
+    int lines   = min(osd->text.lines - osd->draw.head, osdrowscur);
 
     videoBeginDrawing();
 
@@ -1559,7 +1559,7 @@ void OSD_Draw(void)
 
     drawosdchar(2 + offset, osdrowscur, '>', shade, osd->draw.promptpal);
 
-    int const len = min(osd->draw.cols-1-3 - offset, (long int)osd->editor.len - osd->editor.start);
+    int const len = min(osd->draw.cols-1-3 - offset, osd->editor.len - osd->editor.start);
 
     for (int x=len-1; x>=0; x--)
         drawosdchar(3 + x + offset, osdrowscur, osd->editor.buf[osd->editor.start+x], osd->draw.editshade<<1, osd->draw.editpal);

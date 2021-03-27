@@ -368,8 +368,8 @@ static int32_t initpass()  //Interlaced images have 7 "passes", non-interlaced h
 
     //Precalculate x-clipping to screen borders (speeds up putbuf)
     //Equation: (0 <= xr <= ixsiz) && (0 <= xr*ixstp+globxoffs+ixoff <= kp_xres)
-    xr0 = max((-ixoff+(1<<j)-1)>>j,(long int)0);
-    xr1 = min((kp_xres-ixoff+(1<<j)-1)>>j,(long int)ixsiz);
+    xr0 = max((-ixoff+(1<<j)-1)>>j,0);
+    xr1 = min((kp_xres-ixoff+(1<<j)-1)>>j,ixsiz);
     xr0 = ixsiz-xr0;
     xr1 = ixsiz-xr1;
 
@@ -1173,8 +1173,8 @@ static void yrbrend(int32_t x, int32_t y, int32_t *ldct)
             p = pp+(xx<<2);
             dc = odc;
             if (lnumcomponents > 1) dc2 = &ldct[(lcomphvsamp0<<6)+((yy>>lcompvsampshift0)<<3)+(xx>>lcomphsampshift0)];
-            xxxend = min(clipxdim-ox,(long int)8);
-            yyyend = min(clipydim-oy,(long int)8);
+            xxxend = min(clipxdim-ox,8);
+            yyyend = min(clipydim-oy,8);
             if ((lcomphsamp[0] == 1) && (xxxend == 8))
             {
                 for (yyy=0; yyy<yyyend; yyy++)
@@ -1489,7 +1489,7 @@ static int32_t kpegrend(const char *kfilebuf, int32_t kfilength,
 
                                 //Get AC
                                 if (!dctbuf) Bmemset((void *)&dc[1],0,63*4);
-                                z = max(Ss,(long int)1); dcflag = 1;
+                                z = max(Ss,1); dcflag = 1;
                                 if (eobrun <= 0)
                                 {
                                     for (; z<=Se; z++)
@@ -2903,7 +2903,7 @@ int32_t kzread(void *buffer, int32_t leng)
         }
         else
         {
-            i = max(gslidew-32768,(long int)0); j = gslider-16384;
+            i = max(gslidew-32768,0); j = gslider-16384;
 
             //HACK: Don't unzip anything until you have to...
             //   (keeps file pointer as low as possible)

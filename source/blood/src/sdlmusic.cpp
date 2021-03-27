@@ -458,11 +458,11 @@ void MUSIC_SetVolume(int32_t volume)
 {
     if (MUSIC_SoundDevice == MIDIDEVICE_OPL)
     {
-        OPLMusic::MIDI_SetVolume(min(max((int32_t)0, volume), (long int)255));
+        OPLMusic::MIDI_SetVolume(min(max((int32_t)0, volume), 255));
         return;
     }
     volume = max((int32_t)0, volume);
-    volume = min(volume, (long int)255);
+    volume = min(volume, 255);
 
 #ifdef __PSP2__
     bgmvolume = volume;

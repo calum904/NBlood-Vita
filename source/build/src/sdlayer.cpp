@@ -958,7 +958,7 @@ int32_t initinput(void)
             joystick.numAxes = min(9, (int)SDL_JoystickNumAxes(joydev));
 #endif
             joystick.numButtons = min(32, (int)SDL_JoystickNumButtons(joydev));
-            joystick.numHats = min((36-joystick.numButtons)/4,(long int)SDL_JoystickNumHats(joydev));
+            joystick.numHats = min((36-joystick.numButtons)/4,SDL_JoystickNumHats(joydev));
             initprintf("Joystick 1 has %d axes, %d buttons, and %d hat(s).\n", joystick.numAxes, joystick.numButtons, joystick.numHats);
 
             joystick.pAxis = (int32_t *)Xcalloc(joystick.numAxes, sizeof(int32_t));
