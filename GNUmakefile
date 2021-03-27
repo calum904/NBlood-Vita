@@ -406,285 +406,6 @@ ifeq ($(RENDERTYPE),SDL)
 endif
 
 
-#### KenBuild (Test Game)
-
-kenbuild := kenbuild
-
-kenbuild_root := $(source)/$(kenbuild)
-kenbuild_src := $(kenbuild_root)/src
-kenbuild_rsrc := $(kenbuild_root)/rsrc
-kenbuild_obj := $(obj)/$(kenbuild)
-
-kenbuild_cflags := -I$(kenbuild_src)
-
-kenbuild_game := ekenbuild
-kenbuild_editor := ekenbuild-editor
-
-kenbuild_game_proper := EKenBuild
-kenbuild_editor_proper := EKenBuild Editor
-
-kenbuild_game_objs := \
-    game.cpp \
-    sound_stub.cpp \
-    common.cpp \
-    config.cpp \
-
-kenbuild_editor_objs := \
-    bstub.cpp \
-    common.cpp \
-
-kenbuild_game_rsrc_objs :=
-kenbuild_editor_rsrc_objs :=
-kenbuild_game_gen_objs :=
-kenbuild_editor_rsrc_objs :=
-
-ifeq (1,$(HAVE_GTK2))
-    kenbuild_game_objs += startgtk.game.cpp
-    kenbuild_game_gen_objs += game_banner.c
-    kenbuild_editor_gen_objs += build_banner.c
-endif
-ifeq ($(RENDERTYPE),SDL)
-    kenbuild_game_rsrc_objs += game_icon.c
-    kenbuild_editor_rsrc_objs += build_icon.c
-endif
-ifeq ($(PLATFORM),WINDOWS)
-    kenbuild_game_objs += startwin.game.cpp
-    kenbuild_game_rsrc_objs += gameres.rc
-    kenbuild_editor_rsrc_objs += buildres.rc
-endif
-
-ifeq ($(PLATFORM),DARWIN)
-    ifeq ($(STARTUP_WINDOW),1)
-        kenbuild_game_objs += StartupWinController.game.mm
-    endif
-endif
-
-
-#### Duke Nukem 3D
-
-duke3d := duke3d
-
-duke3d_game_ldflags :=
-duke3d_editor_ldflags :=
-
-duke3d_game_stripflags :=
-duke3d_editor_stripflags :=
-
-duke3d_root := $(source)/$(duke3d)
-duke3d_src := $(duke3d_root)/src
-duke3d_rsrc := $(duke3d_root)/rsrc
-duke3d_obj := $(obj)/$(duke3d)
-
-duke3d_cflags := -I$(duke3d_src)
-
-common_editor_deps := duke3d_common_editor engine_editor
-
-duke3d_game_deps := duke3d_common_midi audiolib mact
-duke3d_editor_deps := audiolib
-
-ifneq (0,$(NETCODE))
-    duke3d_game_deps += enet
-endif
-
-ifneq (0,$(LUNATIC))
-    duke3d_game_deps += lunatic lunatic_game lpeg
-    duke3d_editor_deps += lunatic lunatic_editor lpeg
-endif
-
-duke3d_game := eduke32
-duke3d_editor := mapster32
-
-ifneq (,$(APPBASENAME))
-    duke3d_game := $(APPBASENAME)
-endif
-
-duke3d_game_proper := EDuke32
-duke3d_editor_proper := Mapster32
-
-duke3d_common_editor_objs := \
-    m32common.cpp \
-    m32def.cpp \
-    m32exec.cpp \
-    m32vars.cpp \
-
-duke3d_game_objs := \
-    game.cpp \
-    global.cpp \
-    actors.cpp \
-    gamedef.cpp \
-    gameexec.cpp \
-    gamevars.cpp \
-    player.cpp \
-    premap.cpp \
-    sector.cpp \
-    anim.cpp \
-    common.cpp \
-    config.cpp \
-    demo.cpp \
-    input.cpp \
-    menus.cpp \
-    namesdyn.cpp \
-    net.cpp \
-    savegame.cpp \
-    rts.cpp \
-    osdfuncs.cpp \
-    osdcmds.cpp \
-    grpscan.cpp \
-    sounds.cpp \
-    soundsdyn.cpp \
-    cheats.cpp \
-    sbar.cpp \
-    screentext.cpp \
-    screens.cpp \
-    cmdline.cpp \
-
-duke3d_editor_objs := \
-    astub.cpp \
-    common.cpp \
-    grpscan.cpp \
-    sounds_mapster32.cpp \
-
-duke3d_game_rsrc_objs :=
-duke3d_editor_rsrc_objs :=
-duke3d_game_gen_objs :=
-duke3d_editor_gen_objs :=
-
-duke3d_game_miscdeps :=
-duke3d_editor_miscdeps :=
-duke3d_game_orderonlydeps :=
-duke3d_editor_orderonlydeps :=
-
-## Lunatic devel
-lunatic := lunatic
-lunatic_src := $(duke3d_src)/$(lunatic)
-lunatic_obj := $(duke3d_obj)
-
-ifneq (0,$(LUNATIC))
-    COMPILERFLAGS += -I$(lunatic_src) -DLUNATIC
-
-    # Determine size of _defs*.lua bytecode once.
-    ifndef DEFS_BC_SIZE
-        DEFS_BC_SIZE := $(shell $(LUAJIT) -bg -t h $(lunatic_src)/_defs_game.lua -)
-        DEFS_BC_SIZE := $(word 3, $(DEFS_BC_SIZE))
-    endif
-    ifndef DEFS_M32_BC_SIZE
-        DEFS_M32_BC_SIZE := $(shell $(LUAJIT) -bg -t h $(lunatic_src)/_defs_editor.lua -)
-        DEFS_M32_BC_SIZE := $(word 3, $(DEFS_M32_BC_SIZE))
-    endif
-    duke3d_cflags += -DLUNATIC_DEFS_BC_SIZE=$(DEFS_BC_SIZE) -DLUNATIC_DEFS_M32_BC_SIZE=$(DEFS_M32_BC_SIZE)
-
-    # Lunatic object base names. These are not used in targets directly.
-    lunatic_objs := \
-        defs_common.lua \
-        engine_maptext.lua \
-        engine.lua \
-        bcarray.lua \
-        bcheck.lua \
-        bitar.lua \
-        xmath.lua \
-        v.lua \
-        dump.lua \
-        dis_x86.lua \
-        dis_x64.lua \
-
-    lunatic_game_objs := \
-        lunatic_game.cpp \
-        _defs_game.lua \
-        con_lang.lua \
-        lunacon.lua \
-        randgen.lua \
-        stat.lua \
-        control.lua \
-        lunasave.lua \
-        fs.lua \
-
-    lunatic_editor_objs := \
-        lunatic_editor.cpp \
-        _defs_editor.lua \
-
-    # TODO: remove debugging modules from release build
-
-    # now, take care of having the necessary symbols (sector, wall, etc.) in the
-    # executable no matter what the debugging level
-
-    ifeq ($(PLATFORM),DARWIN)
-        # strip on OSX says: removing global symbols from a final linked no longer supported.
-        #                    Use -exported_symbols_list at link time when building
-        # But, following _their_ directions does not give us the symbols! wtf?
-        # Instead of using -alias_list and -exported_symbols_list, prevent stripping them.
-        duke3d_game_stripflags += -s $(duke3d_obj)/lunatic_dynsymlist_game_osx
-        duke3d_editor_stripflags += -s $(duke3d_obj)/lunatic_dynsymlist_editor_osx
-
-        duke3d_game_orderonlydeps += $(duke3d_obj)/lunatic_dynsymlist_game_osx
-        duke3d_editor_orderonlydeps += $(duke3d_obj)/lunatic_dynsymlist_editor_osx
-        LINKERFLAGS += -pagezero_size 10000 -image_base 100000000
-    endif
-    ifeq ($(PLATFORM),WINDOWS)
-        override STRIP :=
-        duke3d_game_miscdeps += $(duke3d_obj)/lunatic_dynsymlist_game.def
-        duke3d_editor_miscdeps += $(duke3d_obj)/lunatic_dynsymlist_editor.def
-    endif
-    ifeq ($(SUBPLATFORM),LINUX)
-        override STRIP :=
-        duke3d_game_ldflags += -Wl,--dynamic-list=$(lunatic_src)/dynsymlist_game.lds
-        duke3d_editor_ldflags += -Wl,--dynamic-list=$(lunatic_src)/dynsymlist_editor.lds
-    endif
-endif
-
-ifeq ($(SUBPLATFORM),LINUX)
-    LIBS += -lFLAC -lvorbisfile -lvorbis -logg
-endif
-
-ifeq ($(PLATFORM),BSD)
-    LIBS += -lFLAC -lvorbisfile -lvorbis -logg -lexecinfo
-endif
-
-ifeq ($(PLATFORM),DARWIN)
-    LIBS += -lFLAC -lvorbisfile -lvorbis -logg -lm \
-            -Wl,-framework,Cocoa -Wl,-framework,Carbon -Wl,-framework,OpenGL \
-            -Wl,-framework,CoreMIDI -Wl,-framework,AudioUnit \
-            -Wl,-framework,AudioToolbox -Wl,-framework,IOKit -Wl,-framework,AGL
-    ifneq (00,$(DARWIN9)$(DARWIN10))
-        LIBS += -Wl,-framework,QuickTime -lm
-    endif
-
-    ifeq ($(STARTUP_WINDOW),1)
-        duke3d_game_objs += GrpFile.game.mm GameListSource.game.mm startosx.game.mm
-    endif
-endif
-
-ifeq ($(PLATFORM),WINDOWS)
-    LIBS += -lFLAC -lvorbisfile -lvorbis -logg
-    duke3d_game_objs += winbits.cpp
-    duke3d_game_rsrc_objs += gameres.rc
-    duke3d_editor_rsrc_objs += buildres.rc
-    ifeq ($(STARTUP_WINDOW),1)
-        duke3d_game_objs += startwin.game.cpp
-    endif
-    ifeq ($(MIXERTYPE),WIN)
-        LIBS += -ldsound
-        duke3d_common_midi_objs := music.cpp midi.cpp mpu401.cpp
-    endif
-endif
-
-ifeq ($(PLATFORM),WII)
-    LIBS += -lvorbisidec
-endif
-
-ifeq (11,$(HAVE_GTK2)$(STARTUP_WINDOW))
-    duke3d_game_objs += startgtk.game.cpp
-    duke3d_game_gen_objs += game_banner.c
-    duke3d_editor_gen_objs += build_banner.c
-endif
-ifeq ($(RENDERTYPE),SDL)
-    duke3d_game_rsrc_objs += game_icon.c
-    duke3d_editor_rsrc_objs += build_icon.c
-endif
-ifeq ($(MIXERTYPE),SDL)
-    duke3d_common_midi_objs := sdlmusic.cpp
-endif
-
-
 #### Blood
 
 blood := blood
@@ -846,129 +567,6 @@ ifeq ($(PLATFORM),PSP2)
 endif
 
 
-#### Shadow Warrior
-
-sw := sw
-
-sw_root := $(source)/$(sw)
-sw_src := $(sw_root)/src
-sw_rsrc := $(sw_root)/rsrc
-sw_obj := $(obj)/$(sw)
-
-sw_cflags := -I$(sw_src)
-
-sw_game_deps := duke3d_common_midi audiolib mact
-sw_editor_deps := audiolib
-
-sw_game := voidsw
-sw_editor := voidsw-editor
-
-sw_game_proper := VoidSW
-sw_editor_proper := VoidSW Editor
-
-sw_game_objs := \
-    actor.cpp \
-    ai.cpp \
-    anim.cpp \
-    border.cpp \
-    break.cpp \
-    bunny.cpp \
-    cache.cpp \
-    cheats.cpp \
-    colormap.cpp \
-    common.cpp \
-    config.cpp \
-    console.cpp \
-    coolg.cpp \
-    coolie.cpp \
-    copysect.cpp \
-    demo.cpp \
-    draw.cpp \
-    eel.cpp \
-    game.cpp \
-    girlninj.cpp \
-    goro.cpp \
-    grpscan.cpp \
-    hornet.cpp \
-    interp.cpp \
-    interpsh.cpp \
-    inv.cpp \
-    jplayer.cpp \
-    jsector.cpp \
-    jweapon.cpp \
-    lava.cpp \
-    light.cpp \
-    mclip.cpp \
-    mdastr.cpp \
-    menus.cpp \
-    miscactr.cpp \
-    morph.cpp \
-    net.cpp \
-    ninja.cpp \
-    panel.cpp \
-    player.cpp \
-    predict.cpp \
-    quake.cpp \
-    ripper.cpp \
-    ripper2.cpp \
-    rooms.cpp \
-    rotator.cpp \
-    rts.cpp \
-    save.cpp \
-    scrip2.cpp \
-    sector.cpp \
-    serp.cpp \
-    setup.cpp \
-    skel.cpp \
-    skull.cpp \
-    slidor.cpp \
-    sounds.cpp \
-    spike.cpp \
-    sprite.cpp \
-    sumo.cpp \
-    swconfig.cpp \
-    sync.cpp \
-    text.cpp \
-    track.cpp \
-    vator.cpp \
-    vis.cpp \
-    wallmove.cpp \
-    warp.cpp \
-    weapon.cpp \
-    zilla.cpp \
-    zombie.cpp \
-    saveable.cpp \
-
-sw_editor_objs := \
-    jnstub.cpp \
-    brooms.cpp \
-    bldscript.cpp \
-    jbhlp.cpp \
-    colormap.cpp \
-    grpscan.cpp \
-    common.cpp \
-
-sw_game_rsrc_objs :=
-sw_editor_rsrc_objs :=
-sw_game_gen_objs :=
-sw_editor_gen_objs :=
-
-ifeq (1,$(HAVE_GTK2))
-    sw_game_objs += startgtk.game.cpp
-    sw_game_gen_objs += game_banner.c
-    sw_editor_gen_objs += build_banner.c
-endif
-ifeq ($(RENDERTYPE),SDL)
-    sw_game_rsrc_objs += game_icon.c
-    sw_editor_rsrc_objs += game_icon.c
-endif
-ifeq ($(PLATFORM),WINDOWS)
-    sw_game_objs += startwin.game.cpp
-    sw_game_rsrc_objs += gameres.rc
-    sw_editor_rsrc_objs += buildres.rc
-endif
-
-
 #### Final setup
 
 COMPILERFLAGS += -I$(engine_inc) -I$(mact_inc) -I$(audiolib_inc) -I$(enet_inc) -I$(glad_inc) -I$(libsmackerdec_inc)
@@ -977,10 +575,7 @@ COMPILERFLAGS += -I$(engine_inc) -I$(mact_inc) -I$(audiolib_inc) -I$(enet_inc) -
 ##### Recipes
 
 games := \
-    kenbuild \
-    duke3d \
     blood \
-    sw \
 
 libraries := \
     engine \
@@ -1080,10 +675,7 @@ $(foreach i,$(games),$(foreach j,$(roles),$(eval $(call BUILDRULE,$i,$j))))
 
 include $(lpeg_root)/Dependencies.mak
 include $(engine_root)/Dependencies.mak
-include $(duke3d_root)/Dependencies.mak
 include $(blood_root)/Dependencies.mak
-include $(sw_root)/Dependencies.mak
-
 
 #### Rules
 
@@ -1106,27 +698,6 @@ enumdisplay$(EXESUFFIX): $(tools_obj)/enumdisplay.$o
 getdxdidf$(EXESUFFIX): $(tools_obj)/getdxdidf.$o
 	$(LINK_STATUS)
 	$(RECIPE_IF) $(LINKER) -o $@ $^ $(LIBDIRS) $(LIBS) -ldinput $(RECIPE_RESULT_LINK)
-
-
-### Lunatic
-
-# Create object files directly with luajit
-$(duke3d_obj)/%.$o: $(lunatic_src)/%.lua | $(duke3d_obj)
-	$(COMPILE_STATUS)
-	$(RECIPE_IF) $(LUAJIT) -bg $(LUAJIT_BCOPTS) $< $@ $(RECIPE_RESULT_COMPILE)
-
-$(duke3d_obj)/%.$o: $(lunatic_src)/%.cpp | $(duke3d_obj)
-	$(COMPILE_STATUS)
-	$(RECIPE_IF) $(COMPILER_CXX) $(duke3d_cflags) -c $< -o $@ $(RECIPE_RESULT_COMPILE)
-
-# List of exported symbols, OS X
-$(duke3d_obj)/lunatic_%_osx: $(lunatic_src)/%.lds | $(duke3d_obj)
-	sed 's/[{};]//g;s/[A-Za-z_][A-Za-z_0-9]*/_&/g' $< > $@
-
-# List of exported symbols, Windows
-$(duke3d_obj)/lunatic_%.def: $(lunatic_src)/%.lds | $(duke3d_obj)
-	echo EXPORTS > $@
-	sed 's/[{};]//g' $< >> $@
 
 
 ### Main Rules
@@ -1203,7 +774,7 @@ $(foreach i,$(components),$($i_obj)):
 
 ### Phonies
 
-clang-tools: $(filter %.c %.cpp,$(foreach i,$(call getdeps,duke3d,game),$(call expandsrcs,$i)))
+clang-tools: $(filter %.c %.cpp,$(foreach i,$(call getdeps,game),$(call expandsrcs,$i)))
 	echo $^ -- -x c++ $(CXXONLYFLAGS) $(COMPILERFLAGS) $(CWARNS) $(foreach i,$(components),$($i_cflags))
 
 $(addprefix clean,$(games)):
@@ -1217,7 +788,7 @@ cleantools:
 	-$(call RM,$(addsuffix $(EXESUFFIX),$($(subst clean,,$@)_targets)))
 	-$(call RMDIR,$($(subst clean,,$@)_obj))
 
-clean: cleanduke3d cleantools
+clean: cleantools
 	-$(call RMDIR,$(obj))
 	-$(call RM,$(ebacktrace_dll))
 
@@ -1229,9 +800,7 @@ rev: $(engine_obj)/rev.$o
 
 ### Compatibility
 
-test: kenbuild
 utils: tools
 printutils: printtools
 veryclean: clean
 cleanutils: cleantools
-cleantest: cleankenbuild

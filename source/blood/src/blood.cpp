@@ -1383,7 +1383,7 @@ static int32_t check_filename_casing(void)
 
 int app_main(int argc, char const * const * argv)
 {
-    char buffer[BMAX_PATH];
+    char buffer[BMAX_PATH] = { 0 };
     margc = argc;
     margv = argv;
 #ifdef _WIN32
